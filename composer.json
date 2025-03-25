@@ -1,0 +1,12 @@
+{
+    "name": "wei/php_order_calculator",
+    "authors": [
+        {
+            "name": "Wei Yang",
+            "email": "weix0015@stud.kea.dk"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    }
+}
