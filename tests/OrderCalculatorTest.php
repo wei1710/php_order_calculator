@@ -1,48 +1,79 @@
 <?php
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-
-require_once 'classes/OrderCalculator.php';
 
 class OrderCalculatorTest extends TestCase
 {
-
-  public function testCalculateFinalPriceNoDiscount(): void
+  protected function setUp(): void
   {
-    $calc = new OrderCalculator(10.00, 5); // no discount
-    $expected = round(10.00 * 5 * 1.2, 2); // total * tax
-    $this->assertEquals($expected, $calc->calculateFinalPrice());
+    require_once 'classes/OrderCalculator.php';
   }
 
-  public function testCalculateFinalPriceWith10PercentDiscount(): void
+  /**
+   * Positive testing
+   */
+
+  #[DataProvider('provideOrderPasses')]
+  public function testOrderPasses(float $unitPrice, int $quantity, float $taxRate, float $expected): void
   {
-    $calc = new OrderCalculator(10.00, 10); // 10% discount
-    $expected = round((10.00 * 10 * 0.9) * 1.2, 2);
-    $this->assertEquals($expected, $calc->calculateFinalPrice());
+    $order = new OrderCalculator($unitPrice, $quantity, $taxRate);
+
+    $this->assertEquals($expected, $order->calculateFinalPrice());
+  }
+  public static function provideOrderPasses(): array
+  {
+    return [
+      [30, 1, 0.2, 36],           // Only one product. No discount
+      [30, 5, 0, 150],            // No tax rate
+      [30, 5, 0.2, 180],          // No discount
+      [30, 9, 0.2, 324],          // Max. no. products with no discount
+      [30, 10, 0.2, 324],         // Min. no. products with 10% discount
+      [30, 15, 0.2, 486],         // 10% discount
+      [30, 19, 0.2, 615.6],       // Max. no. products with 10% discount
+      [30, 20, 0.2, 612],         // Min. no. products with 15% discount
+      [30, 25, 0.2, 765],         // 15% discount
+      [30, 524, 0.2, 16034.4],    // Hundreds of products. 15% discount
+      [30, 6482, 0.2, 198349.2],  // Thousands of products. 15% discount
+    ];
   }
 
-  public function testCalculateFinalPriceWith15PercentDiscount(): void
+  /**
+   * Negative testing
+   */
+
+  #[DataProvider('provideOrderFails')]
+  public function testOrderFails(float $unitPrice, int $quantity, float $taxRate, float $expected): void
   {
-    $calc = new OrderCalculator(10.00, 20); // 15% discount
-    $expected = round((10.00 * 20 * 0.85) * 1.2, 2);
-    $this->assertEquals($expected, $calc->calculateFinalPrice());
+    $order = new OrderCalculator($unitPrice, $quantity, $taxRate);
+
+    $this->assertEquals($expected, $order->calculateFinalPrice());
+  }
+  public static function provideOrderFails(): array
+  {
+    return [
+      [0, 10, 0.2, 0],            // Price is 0
+      [30, 0, 0.2, 0],            // No products
+      [0, 0, 0, 0],               // Price, products and tax rate are 0
+    ];
   }
 
-  public function testThrowsExceptionForNegativePrice(): void
+  /**
+   * Exception testing
+   */
+
+  #[DataProvider('provideExceptions')]
+  public function testOrderRaisesException(float $unitPrice, int $quantity, float $taxRate): void
   {
     $this->expectException(InvalidArgumentException::class);
-    new OrderCalculator(-1, 5);
+    $order = new OrderCalculator($unitPrice, $quantity, $taxRate);
   }
-
-  public function testThrowsExceptionForNegativeQuantity(): void
+  public static function provideExceptions(): array
   {
-    $this->expectException(InvalidArgumentException::class);
-    new OrderCalculator(10, -5);
-  }
-
-  public function testThrowsExceptionForNegativeTax(): void
-  {
-    $this->expectException(InvalidArgumentException::class);
-    new OrderCalculator(10, 5, -0.1);
+    return [
+      [-10, 8, 0.2],
+      [10, -8, 0.2],
+      [10, 8, -0.2]
+    ];
   }
 }
